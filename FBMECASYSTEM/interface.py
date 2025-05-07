@@ -1,8 +1,5 @@
-import time
 import tkinter as tk
 import serial.tools.list_ports
-import tkinter.messagebox
-from tkinter import simpledialog
 from tkinter import messagebox, Toplevel
 from PIL import Image, ImageTk
 import winsound
@@ -35,6 +32,8 @@ class DialogSaisie(tk.Toplevel):
 
         self.entry = tk.Entry(self, font=("Arial", 14), show="*")
         self.entry.pack(pady=5)
+
+        self.entry.focus_set()  # 🔵 Active le focus sur le champ de saisie (curseur actif)
 
         self.bouton_ok = tk.Button(self, text="OK", command=self.on_ok)
         self.bouton_ok.pack(pady=10)
@@ -83,7 +82,7 @@ def afficher_popup(message, couleur):
     ))
     label = tk.Label(popup, text=message, font=("Segoe UI", 20, "bold"), bg=couleur, fg="white")
     label.pack(expand=True, fill="both")
-    root.after(2000, popup.destroy)
+    root.after(2000, lambda: popup.destroy())
 
 def envoyer(adresse, sens):
     global ser
