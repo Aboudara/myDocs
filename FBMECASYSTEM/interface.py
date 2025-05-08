@@ -18,28 +18,63 @@ pause_update = False
 def emettre_signal_sonore():
     winsound.Beep(2500, 700)
 
+
 class DialogSaisie(tk.Toplevel):
     def __init__(self, parent, title, prompt, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
+
+        # Définir le titre de la fenêtre
         self.title(title)
+
+        # Définir la taille de la fenêtre
         self.geometry("500x150")
         self.resizable(False, False)
+
+        # Centrer la fenêtre sur l'écran
+        self.center_window()
+
+        # Rendre la fenêtre modale
         self.transient(parent)
         self.grab_set()
 
+        # Label pour afficher le prompt
         self.label = tk.Label(self, text=prompt, font=("Arial", 12))
         self.label.pack(pady=10)
 
+        # Champ de saisie pour le mot de passe
         self.entry = tk.Entry(self, font=("Arial", 14), show="*")
         self.entry.pack(pady=5)
 
+        # Placer le focus dans le champ de saisie dès l'ouverture
         self.entry.focus_set()  # 🔵 Active le focus sur le champ de saisie (curseur actif)
 
+        # Bouton OK pour valider
         self.bouton_ok = tk.Button(self, text="OK", command=self.on_ok)
         self.bouton_ok.pack(pady=10)
 
         self.result = None
+
+        # Attendre que la fenêtre se ferme
         parent.wait_window(self)
+
+    def center_window(self):
+        # Calculer la position pour centrer la fenêtre sur l'écran
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        window_width = 500  # Largeur de la fenêtre
+        window_height = 150  # Hauteur de la fenêtre
+
+        # Calculer les coordonnées pour centrer la fenêtre
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+
+        # Appliquer la géométrie avec la position calculée
+        self.geometry(f'{window_width}x{window_height}+{x}+{y}')
+
+    def on_ok(self):
+        # Récupérer la valeur saisie
+        self.result = self.entry.get()
+        self.destroy()
 
     def on_ok(self):
         self.result = self.entry.get()
