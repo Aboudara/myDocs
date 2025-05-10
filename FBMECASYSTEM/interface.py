@@ -3,7 +3,7 @@ import serial.tools.list_ports
 from tkinter import messagebox, Toplevel
 from PIL import Image, ImageTk
 import winsound
-from config import ADRESSES_PORTIQUES, PORT_COM_DEFAUT, PORTIQUES_INVERSÉS
+from config import ADRESSES_PORTIQUES, PORT_COM_DEFAUT, PORTIQUES_INVERSES
 from comms import (
     ouvrir_connexion, construire_trame_ouverture, construire_trame_ouverture_permanente,
     envoyer_trame, lire_infos_entrees_sorties, trame_blocage_entree, trame_reinitialisation
@@ -54,6 +54,9 @@ class DialogSaisie(tk.Toplevel):
 
         self.result = None
 
+        # Lier la touche "Entrée" au bouton OK
+        self.entry.bind("<Return>", self.on_ok_event)
+
         # Attendre que la fenêtre se ferme
         parent.wait_window(self)
 
@@ -76,9 +79,10 @@ class DialogSaisie(tk.Toplevel):
         self.result = self.entry.get()
         self.destroy()
 
-    def on_ok(self):
-        self.result = self.entry.get()
-        self.destroy()
+    def on_ok_event(self, event):
+        # Cette méthode est appelée lorsque la touche "Entrée" est pressée
+        self.on_ok()
+
 # detection de port rs485
 def port_est_present(nom_port):
     ports_disponibles = [port.device for port in serial.tools.list_ports.comports()]
@@ -123,7 +127,7 @@ def envoyer(adresse, sens):
     global ser
     port = entry_port.get()
 
-    if PORTIQUES_INVERSÉS.get(adresse, False):
+    if PORTIQUES_INVERSES.get(adresse, False):
         sens = "sortie" if sens == "entree" else "entree"
 
     try:
@@ -180,35 +184,25 @@ def envoyer_mode_global(mode):
     portiques_a_appliquer = []
 
     # Vérifier l'état des checkboxes et sélectionner les portiques
+    checkboxes_dict = {**checkboxesNord, **checkboxesEST}  # Fusion des deux groupes
+    for adr, checkbox in checkboxes_dict.items():
+        if checkbox.get():  # Vérifie si la case est cochée
+            portiques_a_appliquer.append(adr)
 
-    if checkboxesNord[0x02].get() == 1:
-        portiques_a_appliquer.extend([0x02])
-    if checkboxesNord[0x03].get() == 1:
-        portiques_a_appliquer.extend([0x03])
-    if checkboxesNord[0x04].get() == 1:
-        portiques_a_appliquer.extend([0x04])
-    if checkboxesNord[0x05].get() == 1:
-        portiques_a_appliquer.extend([0x05])
-    if checkboxesEST[0x06].get() == 1:
-        portiques_a_appliquer.extend([0x06])
-    if checkboxesEST[0x07].get() == 1:
-        portiques_a_appliquer.extend([0x07])
-    if checkboxesEST[0x08].get() == 1:
-        portiques_a_appliquer.extend([0x08])
-
-    if not portiques_a_appliquer:  # Si aucun checkbox n'est sélectionné, ne faire rien
-        messagebox.showerror("Erreur", f"Vous devez selectionner au moins un groupe ")
+    if not portiques_a_appliquer:  # Si aucun portique n'est sélectionné, ne faire rien
+        messagebox.showerror("Erreur", "Aucun portique sélectionné. Veuillez sélectionner au moins un portique.")
         return
 
     try:
         with ouvrir_connexion(port) as ser:
             for adr in portiques_a_appliquer:
                 # Appliquer la commande uniquement sur les portiques sélectionnés
-                mode_a_envoyer = 0x06 if mode == 0x04 and PORTIQUES_INVERSÉS.get(adr, False) else mode
+                mode_a_envoyer = 0x06 if mode == 0x04 and PORTIQUES_INVERSES.get(adr, False) else mode
                 trame = trame_blocage_entree(adr, mode_a_envoyer)
                 envoyer_trame(ser, trame)
     except Exception as e:
         messagebox.showerror("Erreur COM", str(e))
+
 
 counter = 0  # Compteur pour alterner la mise à jour du label
 def update_all():
@@ -239,7 +233,7 @@ def update_all():
         for adr in ADRESSES_PORTIQUES:
             entree, sortie = lire_infos_entrees_sorties(ser, adr)
 
-            if adr in PORTIQUES_INVERSÉS:
+            if adr in PORTIQUES_INVERSES:
                 entree, sortie = sortie, entree
 
             # Stockage des valeurs pour chaque portique (si elles sont valides et non négatives)
@@ -280,7 +274,7 @@ def update_all():
 
             if should_block:
                 # Blocage : entrée normale ou inversée
-                new_state = 0x06 if adr in PORTIQUES_INVERSÉS else 0x04
+                new_state = 0x06 if adr in PORTIQUES_INVERSES else 0x04
             else:
                 # Mode libre
                 new_state = 0x02
