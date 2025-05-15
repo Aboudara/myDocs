@@ -1,5 +1,5 @@
 # Liste des adresses de portiques
-ADRESSES_PORTIQUES = [0x02 + i for i in range(7)]
+ADRESSES_PORTIQUES = [0x04 + i for i in range(1)]
 
 # Portiques montés à l'envers
 PORTIQUES_INVERSES = {

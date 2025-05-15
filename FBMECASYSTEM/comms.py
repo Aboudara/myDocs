@@ -2,7 +2,7 @@
 
 import serial
 import time
-from config import BAUDRATE, TIMEOUT
+from config import BAUDRATE, TIMEOUT, PORTIQUES_INVERSES
 
 
 def ouvrir_connexion(port):
@@ -22,9 +22,21 @@ def construire_trame_ouverture(adresse, sens):
 
 
 def construire_trame_ouverture_permanente(adresse):
-    trame = [0xAA, 0x00, 0x01, 0x02, 0x00, adresse, 0x08, 0x00, 0x04, 0x00]
-    trame += [0x00] * 5
-    trame.append(calcul_checksum(trame))
+    """
+    Génère une trame d'ouverture permanente (sens entrée par défaut).
+    Si le portique est inversé, génère une trame en sens "sortie".
+    """
+    if PORTIQUES_INVERSES.get(adresse, False):
+        # Trame pour ouverture permanente en sortie
+        data = [0x00, 0x01, 0x00]
+    else:
+        # Trame pour ouverture permanente en entrée
+        data = [0x00, 0x04, 0x00]
+
+    trame = [0xAA, 0x00, 0x01, 0x02, 0x00, adresse, 0x08]
+    trame += data + [0x00] * (8 - len(data))
+    checksum = sum(trame[1:15]) & 0xFF
+    trame.append(checksum)
     return bytes(trame)
 
 

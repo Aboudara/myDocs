@@ -241,26 +241,28 @@ def update_all():
                 entrees_par_portique[adr] = entree
                 sorties_par_portique[adr] = sortie
                 voyants_portiques[adr].config(bg="light green")
+                # Calcul du total des entrées et sorties
+                total_entree = sum(entrees_par_portique.values())
+                total_sortie = sum(sorties_par_portique.values())
+
             else:
                 portiques_hs.append(adr)
-                root.after(4000, lambda: voyants_portiques[adr].config(bg="red"))
+                #root.after(20000, lambda: voyants_portiques[adr].config(bg="red"))
 
         # Vérification de l'état des portiques
         if portiques_hs:
             noms = ', '.join(str(ADRESSES_PORTIQUES.index(a) + 1) for a in portiques_hs)
-            root.after(4000, lambda:label_alerte_rs485.config(text=f"🚨 Portique(s) {noms} hors ligne !"))
+            #root.after(20000, lambda:label_alerte_rs485.config(text=f"🚨 Portique(s) {noms} hors ligne !"))
         else:
             label_alerte_rs485.config(text="")
 
-        # Calcul du total des entrées et sorties
-        total_entree = sum(entrees_par_portique.values())
-        total_sortie = sum(sorties_par_portique.values())
+
 
         total_sur_site = total_entree - total_sortie
-        if  not portiques_hs:
-            root.after(4000, lambda: label_global.config(text=f"\U0001F465 Total sur site : {total_entree - total_sortie}"))
+        #if  not portiques_hs:
+            #root.after(20000, lambda: label_global.config(text=f"\U0001F465 Total sur site : {total_entree - total_sortie}"))
 
-
+        label_global.config(text=f"\U0001F465 Total sur site : {total_entree - total_sortie}")
         # Gestion des seuils et affichage des popups
         seuil = int(entry_seuil.get())
         if seuil > 0 and total_sur_site / seuil >= 0.96:
