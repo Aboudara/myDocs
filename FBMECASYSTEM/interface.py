@@ -1,5 +1,9 @@
+import time
 import tkinter as tk
 import serial.tools.list_ports
+import logging
+import tkinter.messagebox
+from tkinter import simpledialog
 from tkinter import messagebox, Toplevel
 from PIL import Image, ImageTk
 import winsound
@@ -7,6 +11,13 @@ from config import ADRESSES_PORTIQUES, PORT_COM_DEFAUT, PORTIQUES_INVERSES
 from comms import (
     ouvrir_connexion, construire_trame_ouverture, construire_trame_ouverture_permanente,
     envoyer_trame, lire_infos_entrees_sorties, trame_blocage_entree, trame_reinitialisation
+)
+
+# Configurer le logger
+logging.basicConfig(
+    filename="application.log",  # Nom du fichier de log
+    level=logging.INFO,  # Niveau de log (INFO pour les événements courants)
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Format du log
 )
 
 ser = None
@@ -17,7 +28,6 @@ pause_update = False
 
 def emettre_signal_sonore():
     winsound.Beep(2500, 700)
-
 
 class DialogSaisie(tk.Toplevel):
     def __init__(self, parent, title, prompt, *args, **kwargs):
@@ -82,7 +92,6 @@ class DialogSaisie(tk.Toplevel):
     def on_ok_event(self, event):
         # Cette méthode est appelée lorsque la touche "Entrée" est pressée
         self.on_ok()
-
 # detection de port rs485
 def port_est_present(nom_port):
     ports_disponibles = [port.device for port in serial.tools.list_ports.comports()]
@@ -108,6 +117,7 @@ def verifier_mot_de_passeMaster(mot_de_passe_attendu):
 
 def fermer_interface():
     if verifier_mot_de_passeMaster("admin123"):
+        logging.info("Fermeture de l'aplication")
         root.destroy()
 
 def afficher_popup(message, couleur):
@@ -121,7 +131,7 @@ def afficher_popup(message, couleur):
     ))
     label = tk.Label(popup, text=message, font=("Segoe UI", 20, "bold"), bg=couleur, fg="white")
     label.pack(expand=True, fill="both")
-    root.after(2000, lambda: popup.destroy())
+    root.after(2000, popup.destroy)
 
 def envoyer(adresse, sens):
     global ser
@@ -184,13 +194,24 @@ def envoyer_mode_global(mode):
     portiques_a_appliquer = []
 
     # Vérifier l'état des checkboxes et sélectionner les portiques
-    checkboxes_dict = {**checkboxesNord, **checkboxesEST}  # Fusion des deux groupes
-    for adr, checkbox in checkboxes_dict.items():
-        if checkbox.get():  # Vérifie si la case est cochée
-            portiques_a_appliquer.append(adr)
 
-    if not portiques_a_appliquer:  # Si aucun portique n'est sélectionné, ne faire rien
-        messagebox.showerror("Erreur", "Aucun portique sélectionné. Veuillez sélectionner au moins un portique.")
+    if checkboxesNord[0x02].get() == 1:
+        portiques_a_appliquer.extend([0x02])
+    if checkboxesNord[0x03].get() == 1:
+        portiques_a_appliquer.extend([0x03])
+    if checkboxesNord[0x04].get() == 1:
+        portiques_a_appliquer.extend([0x04])
+    if checkboxesNord[0x05].get() == 1:
+        portiques_a_appliquer.extend([0x05])
+    if checkboxesEST[0x06].get() == 1:
+        portiques_a_appliquer.extend([0x06])
+    if checkboxesEST[0x07].get() == 1:
+        portiques_a_appliquer.extend([0x07])
+    if checkboxesEST[0x08].get() == 1:
+        portiques_a_appliquer.extend([0x08])
+
+    if not portiques_a_appliquer:  # Si aucun checkbox n'est sélectionné, ne faire rien
+        messagebox.showerror("Erreur", f"Vous devez selectionner au moins un groupe ")
         return
 
     try:
@@ -202,7 +223,6 @@ def envoyer_mode_global(mode):
                 envoyer_trame(ser, trame)
     except Exception as e:
         messagebox.showerror("Erreur COM", str(e))
-
 
 counter = 0  # Compteur pour alterner la mise à jour du label
 def update_all():
@@ -241,28 +261,24 @@ def update_all():
                 entrees_par_portique[adr] = entree
                 sorties_par_portique[adr] = sortie
                 voyants_portiques[adr].config(bg="light green")
-                # Calcul du total des entrées et sorties
+                label_alerte_rs485.config(text="")
+
                 total_entree = sum(entrees_par_portique.values())
                 total_sortie = sum(sorties_par_portique.values())
-
             else:
                 portiques_hs.append(adr)
-                #root.after(20000, lambda: voyants_portiques[adr].config(bg="red"))
-
-        # Vérification de l'état des portiques
-        if portiques_hs:
-            noms = ', '.join(str(ADRESSES_PORTIQUES.index(a) + 1) for a in portiques_hs)
-            #root.after(20000, lambda:label_alerte_rs485.config(text=f"🚨 Portique(s) {noms} hors ligne !"))
-        else:
-            label_alerte_rs485.config(text="")
+                # Vérification de l'état des portiques
+                if portiques_hs:
+                    noms = ', '.join(str(ADRESSES_PORTIQUES.index(a) + 1) for a in portiques_hs)
+                    root.after(20000, lambda: label_alerte_rs485.config(text=f"🚨 Portique(s) {noms} hors ligne !"))
+                    root.after(20000, lambda: voyants_portiques[adr].config(bg="red"))
 
 
-
+        # Calcul du total des entrées et sorties
         total_sur_site = total_entree - total_sortie
-        #if  not portiques_hs:
-            #root.after(20000, lambda: label_global.config(text=f"\U0001F465 Total sur site : {total_entree - total_sortie}"))
+        label_global.config(text=f"\U0001F465 Total sur site : {total_sur_site}")
 
-        label_global.config(text=f"\U0001F465 Total sur site : {total_entree - total_sortie}")
+
         # Gestion des seuils et affichage des popups
         seuil = int(entry_seuil.get())
         if seuil > 0 and total_sur_site / seuil >= 0.96:
@@ -320,6 +336,36 @@ def connecter_deconnecter():
     except Exception as e:
         messagebox.showerror("Erreur", f"Impossible de se connecter à {port} :\n{e}")
 
+def ouvrir_config_portiques():
+    def valider():
+        try:
+            nb = int(entry_nb.get())
+            if 1 <= nb <= 20:
+                config_window.destroy()
+                maj_interface(nb)
+            else:
+                messagebox.showerror("Erreur", "Veuillez entrer un nombre entre 1 et 20.")
+        except ValueError:
+            messagebox.showerror("Erreur", "Veuillez entrer un nombre valide.")
+
+    config_window = Toplevel(root)
+    config_window.title("Configuration des portiques")
+    config_window.geometry("400x150")
+    config_window.grab_set()
+
+    tk.Label(config_window, text="Nombre total de portiques :", font=("Arial", 14)).pack(pady=10)
+    entry_nb = tk.Entry(config_window, font=("Arial", 14))
+    entry_nb.pack(pady=5)
+    tk.Button(config_window, text="Valider", font=("Arial", 12), command=valider).pack(pady=10)
+
+
+def maj_interface(nb_portiques):
+    global ADRESSES_PORTIQUES, PORTIQUES_INVERSES
+    ADRESSES_PORTIQUES = [0x02 + i for i in range(nb_portiques)]
+    PORTIQUES_INVERSES = {adr: False for adr in ADRESSES_PORTIQUES}  # Tu pourras adapter selon ta logique
+    root.destroy()
+    lancer_interface()
+
 # Fonction activer_desactiver_seuil
 def activer_desactiver_seuil():
     if entry_seuil.cget("state") == "readonly":
@@ -366,6 +412,8 @@ def lancer_interface():
 
     top_frame = tk.Frame(frame, bg="#048B9A")
     top_frame.pack(pady=15)
+
+    tk.Button(top_frame, text="⚙ Configurer Portiques", font=font_large, bg="#34495E", fg="white", command=ouvrir_config_portiques).grid(row=0, column=9, padx=20)
 
     tk.Label(top_frame, text="Port COM:", font=font_large, bg="#048B9A", fg="white").grid(row=0, column=0, padx=10)
     entry_port = tk.Entry(top_frame, font=font_large, bg="#0F056B", fg="white", width=10)
