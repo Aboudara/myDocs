@@ -12,6 +12,8 @@ void grafcet_set_enabled(bool en);
 void grafcet_set_TEMPO_1(unsigned long t);
 void grafcet_set_TEMPO_2(unsigned long t);
 
+// nouveau : RET via IHM
+void grafcet_set_RET_ihm(bool v);
 
 // pour l’UI
 Step grafcet_get_step();

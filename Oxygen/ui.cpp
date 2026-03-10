@@ -1,5 +1,7 @@
 // ui.cpp
 #include <Arduino.h>
+//#define LV_CONF_INCLUDE_SIMPLE 1
+//#include "lv_conf.h"
 #include <lvgl.h>
 #include "lvgl_v8_port.h"
 #include "esp_panel_board_custom_conf.h"
@@ -12,6 +14,7 @@
 extern const lv_img_dsc_t Logo_Oxygen;
 
 // Police plus grande pour icônes / textes
+extern const lv_font_t lv_font_montserrat_18;
 extern const lv_font_t lv_font_montserrat_30;
 
 // =========================
@@ -30,6 +33,11 @@ static lv_obj_t *label_val_tempo1 = nullptr;
 static lv_obj_t *label_val_tempo2 = nullptr;
 static lv_obj_t *slider_tempo1    = nullptr;
 static lv_obj_t *slider_tempo2    = nullptr;
+
+// === AJOUT RET IHM ===
+static lv_obj_t *sw_ret       = nullptr;
+static lv_obj_t *label_sw_ret = nullptr;
+// ======================
 
 // boutons de navigation
 static lv_obj_t *btn_home         = nullptr;  // sur page principale
@@ -76,7 +84,6 @@ static void update_nav_buttons_style() {
         if (btn_settings_reg) lv_obj_set_style_bg_color(btn_settings_reg, grey, 0);
     }
 }
-
 
 // =========================
 //  Callbacks LVGL
@@ -136,6 +143,14 @@ static void accueil_btn_cb(lv_event_t *e) {
     grafcet_set_enabled(true);   // GRAFCET actif quand page principale
     update_nav_buttons_style();
 }
+
+// === AJOUT: callback switch RET IHM ===
+static void sw_ret_cb(lv_event_t *e) {
+    bool state = lv_obj_has_state(sw_ret, LV_STATE_CHECKED);
+    grafcet_set_RET_ihm(state);
+    lv_label_set_text(label_sw_ret, state ? "RET IHM: ON" : "RET IHM: OFF");
+}
+// =====================================
 
 // =========================
 //  Création des pages
@@ -321,10 +336,35 @@ static void create_page_reglages() {
     lv_label_set_text_fmt(label_val_tempo2, "%lu s", grafcet_get_TEMPO_2() / 1000);
     lv_obj_align(label_val_tempo2, LV_ALIGN_RIGHT_MID, -30, 10);
 
+    // === Panel RET IHM centré ===
+    lv_obj_t *panel_ret = lv_obj_create(page_reglages);
+    lv_obj_set_size(panel_ret, 500, 80);
+    lv_obj_align(panel_ret, LV_ALIGN_CENTER, 0, 200);
+
+    // Titre centré en haut
+    lv_obj_t *label_ret = lv_label_create(panel_ret);
+    lv_label_set_text(label_ret, "Retour (RET) via IHM");
+    // Aligné à gauche, milieu vertical du panel
+    lv_obj_align(label_ret, LV_ALIGN_LEFT_MID, 10, 0);
+
+    // Switch centré au milieu
+    sw_ret = lv_switch_create(panel_ret);
+    lv_obj_align(sw_ret, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_size(sw_ret, 90, 45);  
+    lv_obj_add_event_cb(sw_ret, sw_ret_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // Label d'état aligné à droite au milieu vertical
+    label_sw_ret = lv_label_create(panel_ret);
+    lv_label_set_text(label_sw_ret, "RET IHM: OFF");
+    lv_obj_align(label_sw_ret, LV_ALIGN_RIGHT_MID, -10, 0);
+
+
+    // ============================
+
     // Bouton HOME (maison) en bas à gauche
     btn_home_reg = lv_btn_create(page_reglages);
     lv_obj_set_size(btn_home_reg, 80, 80);
-    lv_obj_align(btn_home_reg, LV_ALIGN_BOTTOM_LEFT, 40, 20);
+    lv_obj_align(btn_home_reg, LV_ALIGN_BOTTOM_LEFT, 20, 20);
     lv_obj_add_event_cb(btn_home_reg, btn_home_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *label_home_reg = lv_label_create(btn_home_reg);
@@ -335,7 +375,7 @@ static void create_page_reglages() {
     // Bouton REGLAGES (engrenage) en bas à droite
     btn_settings_reg = lv_btn_create(page_reglages);
     lv_obj_set_size(btn_settings_reg, 80, 80);
-    lv_obj_align(btn_settings_reg, LV_ALIGN_BOTTOM_RIGHT, -40, 20);
+    lv_obj_align(btn_settings_reg, LV_ALIGN_BOTTOM_RIGHT, -20, 20);
     lv_obj_add_event_cb(btn_settings_reg, btn_settings_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *label_settings_reg = lv_label_create(btn_settings_reg);

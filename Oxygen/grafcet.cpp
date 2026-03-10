@@ -3,6 +3,7 @@
 #include "grafcet.h"
 #include "modbus_io.h"
 
+
 // =========================
 //  Etat interne GRAFCET
 // =========================
@@ -14,9 +15,13 @@ static unsigned long TEMPO_2 = 10000;   // 10 s
 static unsigned long timer_start = 0;
 static bool          timer_actif = false;
 
+// RET piloté par l'IHM (toggle sur page réglages)
+static bool RET_ihm = false;
+
 static InputsState last_inputs = {false, false, false};
 static bool grafcet_enabled = false;          // bloqué par défaut (page accueil)
 static unsigned long last_step_change_ms = 0; // dernière évolution d'étape
+
 
 // =========================
 //  API interne
@@ -82,6 +87,7 @@ static void apply_outputs_for_step(Step step) {
     modbus_write_relay(REL_V2, V2);
 }
 
+
 // =========================
 //  Implémentation API grafcet.h
 // =========================
@@ -101,11 +107,19 @@ void grafcet_set_enabled(bool en) {
     grafcet_enabled = en;
 }
 
+// nouveau: pilotage RET par l'IHM
+void grafcet_set_RET_ihm(bool v) {
+    RET_ihm = v;
+}
+
 void grafcet_step() {
     if (!grafcet_enabled) return;   // ne rien faire si désactivé
 
     InputsState in;
     if (!modbus_read_inputs(in)) return;
+
+    // Combinaison RET physique + RET IHM (OU logique)
+    in.RET = in.RET || RET_ihm;
 
     last_inputs = in;
     previous_step = current_step;
@@ -176,6 +190,7 @@ void grafcet_step() {
         apply_outputs_for_step(current_step);
     }
 }
+
 
 // Getters pour l’UI
 Step grafcet_get_step() { return current_step; }
